@@ -15,4 +15,4 @@ Neura AI is a chat assistant connected to live data.
 | News and recent events | Web search |
 | "Swap 1 ETH to USDC" | Quote preview (Swap is coming soon) |
 
-Chats are saved privately per wallet. Neura AI **never** signs or sends transactions, and its answers are information, not financial advice.
+Chats are saved privately per wallet. Neura AI **never** signs or sends transactions.
