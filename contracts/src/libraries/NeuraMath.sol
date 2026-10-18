@@ -28,33 +28,17 @@ library NeuraMath {
         return (a * b) / 1e18;
     }
 
-    /// d(k)/dy = 3*x*y^2 + x^3
-    function _d(uint256 x, uint256 y) private pure returns (uint256) {
-        return (3 * x * ((y * y) / 1e18)) / 1e18 + ((((x * x) / 1e18) * x) / 1e18);
-    }
-
-    /// Newton's method: find y such that stableK(x, y) == k, starting from `y`.
-    /// Always rounds in the pool's favour.
+    /// Find the smallest y in [0, upper] whose integer invariant is >= k.
+    /// Bounded bisection avoids zero derivatives and Newton overshoot at tiny reserves.
+    /// Pool bounds normalized reserves to 1e28 so all stableK intermediates fit uint256.
     function stableGetY(uint256 x, uint256 k, uint256 y) internal pure returns (uint256) {
-        for (uint256 i = 0; i < 255; i++) {
-            uint256 kNow = stableK(x, y);
-            if (kNow < k) {
-                uint256 dy = ((k - kNow) * 1e18) / _d(x, y);
-                if (dy == 0) {
-                    if (kNow == k) return y;
-                    if (stableK(x, y + 1) > k) return y + 1;
-                    dy = 1;
-                }
-                y += dy;
-            } else {
-                uint256 dy = ((kNow - k) * 1e18) / _d(x, y);
-                if (dy == 0) {
-                    if (kNow == k || stableK(x, y - 1) < k) return y;
-                    dy = 1;
-                }
-                y -= dy;
-            }
+        require(stableK(x, y) >= k, "NeuraMath: bracket");
+        uint256 low;
+        while (low < y) {
+            uint256 mid = low + (y - low) / 2;
+            if (stableK(x, mid) >= k) y = mid;
+            else low = mid + 1;
         }
-        revert("NeuraMath: no convergence");
+        return y;
     }
 }

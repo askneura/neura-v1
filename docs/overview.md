@@ -13,10 +13,10 @@ Neura is an **AI-native, multi-chain exchange** for EVM networks. It pairs our o
 | | Classic AMM | Neura V1 |
 |---|---|---|
 | Curves | One curve per protocol | **Volatile + Stable curves in one pool contract** |
-| Fees | Fixed per pool | **Fixed tier + same-block surge fee** that taxes sandwich bots, not users |
+| Fees | Fixed per pool | **Fixed tier + same-block surge fee** that applies to all later swaps in a block |
 | Risk | You find out after | **Neura AI risk check before signing** |
 | Chains | Usually one per deployment | **Six EVM mainnets, one interface** |
-| Oracle | Optional | **Built-in TWAP on every pool** |
+| Oracle | Optional | **Volatile reserve-ratio cumulatives; stable oracle not provided** |
 
 ## Read next
 

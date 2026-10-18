@@ -1,0 +1,20 @@
+name: Bug report
+description: Non-sensitive contract or documentation issue
+body:
+  - type: markdown
+    attributes:
+      value: "Do not publish exploit details, keys or user records. Follow SECURITY.md for vulnerabilities."
+  - type: textarea
+    id: revision
+    attributes:
+      label: Source revision and local environment
+      description: Commit, Foundry/Solidity versions, affected contract or page.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal local reproduction
+      description: Expected and actual behavior, commands and a test using mock assets only.
+    validations:
+      required: true

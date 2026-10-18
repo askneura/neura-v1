@@ -22,4 +22,4 @@ The Router sends each hop's output **directly to the next pool**, saving one tra
 
 ## Best route
 
-The interface quotes candidate routes with `getAmountsOut` across fee tiers and both curves, then picks the highest output after gas. Neura AI shows you the route before you sign.
+A future executable interface can quote candidate routes with `getAmountsOut` across fee tiers and both curves, then compare output after gas. V1 has no on-chain best-route discovery. Swap is currently coming soon; AI previews do not submit trades.

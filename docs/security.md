@@ -4,17 +4,19 @@ Known AMM attacks and how Neura V1 handles each one.
 
 > Reference documentation. V1 contracts are unaudited and not deployed. Read the [security limitations](../SECURITY.md); descriptions are not guarantees.
 
-| Threat | Mitigation in V1 |
+**Unaudited reference code.** The mechanisms below are not guarantees against all attacks. See [testing](testing.md) for executable coverage.
+
+| Threat | Mechanism and limits in V1 |
 |---|---|
 | Re-entrancy | `lock` modifier on every state-changing pool function |
-| LP share inflation (first depositor) | 1,000 LP units permanently burned |
-| Stable-pool dust initialisation | First stable deposit must be balanced; minimum $k$ |
-| Sandwich / MEV | Surge fee on 2nd+ swap in a block; tight default slippage |
-| Rounding exploits | All math rounds in the pool's favour; Newton solver ±1 wei checks |
+| LP share inflation (first depositor) | 1,000 volatile units; decimal-aware larger stable lock |
+| Stable-pool dust initialisation | Balanced first deposit; stable lock and post-update invariant floor |
+| Sandwich / MEV | Surcharge on all later swaps; no bot detection or guaranteed protection |
+| Rounding exploits | Bisection retains minimal safe reserve; bounded arithmetic and fuzz checks |
 | Fee-on-transfer tokens | Pool reads real balances; Router checks real received amount |
 | Non-standard ERC-20 (no bool) | Low-level `call` accepting empty return data |
-| Oracle manipulation | Price recorded before trades each block; use ≥30 min TWAP |
-| Overflow | Solidity 0.8 checked math; reserves capped at uint112 |
+| Oracle manipulation | Volatile raw-ratio cumulatives only; consumers need reviewed observations and risk controls |
+| Overflow | Checked math, uint112 raw cap and 10^28 stable normalized cap |
 | Admin abuse | No owner, no pause, no upgrade, immutable fees |
 | Stale transactions | `deadline` on all Router calls |
 
@@ -26,4 +28,4 @@ Known AMM attacks and how Neura V1 handles each one.
 
 ## Before mainnet
 
-Independent audits, a public bug bounty and invariant fuzz testing will be completed and published here before any deployment.
+Independent audits and a deployment review remain required. Local regression/fuzz tests are included, but formal verification and longer adversarial campaigns remain outstanding. No completed audit, bounty program or deployment date is claimed.

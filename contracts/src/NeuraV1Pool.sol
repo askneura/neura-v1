@@ -9,7 +9,7 @@ import {NeuraMath} from "./libraries/NeuraMath.sol";
 ///         - Volatile: x * y >= k               (any token pair)
 ///         - Stable:   x^3*y + x*y^3 >= k       (correlated pairs, e.g. USDC/USDT)
 ///         plus a fee tier chosen at creation and a same-block "surge" fee that
-///         makes sandwich attacks unprofitable for small moves.
+///         charges later swaps in a block; this is not guaranteed MEV protection.
 /// @dev    UNAUDITED. Not deployed. Reference implementation for the Neura docs.
 contract NeuraV1Pool {
     // ---------------------------------------------------------------- LP token
@@ -27,6 +27,8 @@ contract NeuraV1Pool {
     uint256 public constant MINIMUM_LIQUIDITY = 1_000;
     uint256 public constant FEE_DENOMINATOR = 1_000_000; // fees in pips (1e-6)
     uint256 public constant MAX_TOTAL_FEE = 10_000;      // 1.00% hard cap
+    uint256 public constant MAX_NORMALIZED_RESERVE = 1e28;
+    uint256 public constant MIN_STABLE_NORMALIZED_RESERVE = 1e15;
 
     address public immutable factory;
     address public immutable token0;
@@ -61,6 +63,7 @@ contract NeuraV1Pool {
     error KInvariant();
     error Overflow();
     error TransferFailed();
+    error UnsupportedDecimals();
 
     modifier lock() {
         if (unlocked != 1) revert Locked();
@@ -74,8 +77,11 @@ contract NeuraV1Pool {
         require(f + surge <= MAX_TOTAL_FEE, "fee");
         factory = msg.sender;
         (token0, token1, stable, baseFee, surgeFee) = (t0, t1, s, f, surge);
-        decimals0 = 10 ** IERC20Minimal(t0).decimals();
-        decimals1 = 10 ** IERC20Minimal(t1).decimals();
+        uint8 d0 = IERC20Minimal(t0).decimals();
+        uint8 d1 = IERC20Minimal(t1).decimals();
+        if (d0 > 18 || d1 > 18) revert UnsupportedDecimals();
+        decimals0 = 10 ** d0;
+        decimals1 = 10 ** d1;
     }
 
     // ---------------------------------------------------------------- views
@@ -90,28 +96,39 @@ contract NeuraV1Pool {
 
     /// @notice Quote for routers / the Neura interface.
     function getAmountOut(uint256 amountIn, address tokenIn) external view returns (uint256) {
+        require(tokenIn == token0 || tokenIn == token1, "token");
         (uint256 r0, uint256 r1) = (reserve0, reserve1);
+        if (amountIn == 0 || r0 == 0 || r1 == 0) return 0;
+        if (amountIn > type(uint112).max) revert Overflow();
         amountIn -= (amountIn * currentFee()) / FEE_DENOMINATOR;
         return _amountOut(amountIn, tokenIn, r0, r1);
     }
 
     // ---------------------------------------------------------------- liquidity
     function mint(address to) external lock returns (uint256 liquidity) {
+        if (to == address(0) || to == address(this)) revert InvalidTo();
         (uint256 r0, uint256 r1) = (reserve0, reserve1);
         uint256 b0 = IERC20Minimal(token0).balanceOf(address(this));
         uint256 b1 = IERC20Minimal(token1).balanceOf(address(this));
+        _checkBalances(b0, b1);
         uint256 a0 = b0 - r0;
         uint256 a1 = b1 - r1;
         uint256 supply = totalSupply;
         if (supply == 0) {
-            liquidity = NeuraMath.sqrt(a0 * a1) - MINIMUM_LIQUIDITY;
-            _mint(address(0xdead), MINIMUM_LIQUIDITY); // permanently locked: blocks share-inflation attacks
+            uint256 initial = NeuraMath.sqrt(a0 * a1);
+            uint256 lockedLiquidity = MINIMUM_LIQUIDITY;
             if (stable) {
                 // first deposit must be balanced in normalized units, otherwise the
                 // stable invariant can be skewed by a dust first depositor.
                 require((a0 * 1e18) / decimals0 == (a1 * 1e18) / decimals1, "stable: unbalanced init");
                 require(_k(a0, a1) > MINIMUM_LIQUIDITY, "stable: k");
+                // Keep the locked tail above the integer stable-invariant dust domain.
+                lockedLiquidity = NeuraMath.sqrt(decimals0 * decimals1) * MIN_STABLE_NORMALIZED_RESERVE / 1e18;
+                if (lockedLiquidity < MINIMUM_LIQUIDITY) lockedLiquidity = MINIMUM_LIQUIDITY;
             }
+            if (initial <= lockedLiquidity) revert InsufficientLiquidityMinted();
+            liquidity = initial - lockedLiquidity;
+            _mint(address(0xdead), lockedLiquidity);
         } else {
             liquidity = NeuraMath.min((a0 * supply) / r0, (a1 * supply) / r1);
         }
@@ -122,6 +139,7 @@ contract NeuraV1Pool {
     }
 
     function burn(address to) external lock returns (uint256 amount0, uint256 amount1) {
+        if (to == address(0) || to == address(this) || to == token0 || to == token1) revert InvalidTo();
         (uint256 r0, uint256 r1) = (reserve0, reserve1);
         uint256 b0 = IERC20Minimal(token0).balanceOf(address(this));
         uint256 b1 = IERC20Minimal(token1).balanceOf(address(this));
@@ -146,7 +164,7 @@ contract NeuraV1Pool {
         if (amount0Out == 0 && amount1Out == 0) revert InsufficientOutput();
         (uint256 r0, uint256 r1) = (reserve0, reserve1);
         if (amount0Out >= r0 || amount1Out >= r1) revert InsufficientLiquidity();
-        if (to == token0 || to == token1) revert InvalidTo();
+        if (to == address(0) || to == address(this) || to == token0 || to == token1) revert InvalidTo();
 
         uint256 feePips = currentFee();
         if (amount0Out > 0) _safeTransfer(token0, to, amount0Out);
@@ -157,6 +175,7 @@ contract NeuraV1Pool {
         uint256 b1 = IERC20Minimal(token1).balanceOf(address(this));
         uint256 in0 = b0 > r0 - amount0Out ? b0 - (r0 - amount0Out) : 0;
         uint256 in1 = b1 > r1 - amount1Out ? b1 - (r1 - amount1Out) : 0;
+        _checkBalances(b0, b1);
         if (in0 == 0 && in1 == 0) revert InsufficientInput();
 
         // invariant is checked on balances minus the fee taken from the input side
@@ -200,16 +219,20 @@ contract NeuraV1Pool {
         uint256 n1 = (r1 * 1e18) / decimals1;
         (uint256 rIn, uint256 rOut, uint256 dIn, uint256 dOut) = zeroForOne ? (n0, n1, decimals0, decimals1) : (n1, n0, decimals1, decimals0);
         uint256 x = rIn + (amountIn * 1e18) / dIn;
+        if (x > MAX_NORMALIZED_RESERVE) revert Overflow();
         uint256 y = rOut - NeuraMath.stableGetY(x, xy, rOut);
         return (y * dOut) / 1e18;
     }
 
     function _update(uint256 b0, uint256 b1, uint256 r0, uint256 r1) private {
-        if (b0 > type(uint112).max || b1 > type(uint112).max) revert Overflow();
+        _checkBalances(b0, b1);
+        if (stable && totalSupply > 0 && _k(b0, b1) <= MINIMUM_LIQUIDITY) revert KInvariant();
         uint32 ts = uint32(block.timestamp);
         unchecked {
             uint32 elapsed = ts - blockTimestampLast;
-            if (elapsed > 0 && r0 != 0 && r1 != 0) {
+            // Stable reserve ratios are not the curve's marginal prices. Do not
+            // expose them as an oracle: stable cumulative fields remain zero.
+            if (!stable && elapsed > 0 && r0 != 0 && r1 != 0) {
                 price0CumulativeLast += ((r1 * 1e18) / r0) * elapsed;
                 price1CumulativeLast += ((r0 * 1e18) / r1) * elapsed;
             }
@@ -218,6 +241,11 @@ contract NeuraV1Pool {
         reserve1 = uint112(b1);
         blockTimestampLast = ts;
         emit Sync(reserve0, reserve1);
+    }
+
+    function _checkBalances(uint256 b0, uint256 b1) private view {
+        if (b0 > type(uint112).max || b1 > type(uint112).max) revert Overflow();
+        if (stable && ((b0 * 1e18) / decimals0 > MAX_NORMALIZED_RESERVE || (b1 * 1e18) / decimals1 > MAX_NORMALIZED_RESERVE)) revert Overflow();
     }
 
     // ---------------------------------------------------------------- ERC20
@@ -240,6 +268,7 @@ contract NeuraV1Pool {
     }
 
     function _transfer(address from, address to, uint256 value) private {
+        if (to == address(0) || from == address(0xdead)) revert InvalidTo();
         balanceOf[from] -= value;
         balanceOf[to] += value;
         emit Transfer(from, to, value);

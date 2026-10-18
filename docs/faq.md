@@ -14,7 +14,7 @@ Short answers to common questions.
 
 **Can fees change after I deposit?** No. A pool's fee tier is fixed forever.
 
-**Why did a second trade in the same block cost more?** That is the [surge fee](fees.md), which protects you from sandwich bots.
+**Why did a second trade in the same block cost more?** That is the [surge fee](fees.md), which applies regardless of whether the trader is a user or a bot; it is not guaranteed protection.
 
 **Which pool should I use for stablecoins?** The 0.01% stable pool.
 

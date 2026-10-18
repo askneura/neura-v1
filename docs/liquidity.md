@@ -12,7 +12,7 @@ $$
 L = \sqrt{\Delta x \cdot \Delta y} - 1000
 $$
 
-The first 1,000 units are sent to a dead address forever. This makes the "donate to inflate the share price" attack cost more than it could ever earn.
+For volatile pools the first 1,000 LP units are permanently locked. Stable pools lock max(1,000, floor(sqrt(decimals0 × decimals1) × 10^15 / 10^18)) raw LP units to keep the remaining balances out of the zero-invariant dust domain. Here decimals0/1 are token unit scales (10 raised to metadata decimals), not decimal counts. Accordingly the first stable mint subtracts this larger lock rather than 1,000. A lock raises inflation cost but does not guarantee economic safety.
 
 ## Later deposits
 

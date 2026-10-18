@@ -13,7 +13,7 @@ How the Factory, Pool, Router and math library fit together.
    user ──▶ NeuraV1Router ──▶ NeuraV1Pool (LP token + reserves + oracle)
               │  deadlines         │  uses
               │  slippage          ▼
-              │  multi-hop     NeuraMath (sqrt, stable invariant, Newton)
+              │  multi-hop     NeuraMath (sqrt, stable invariant, bounded bisection)
               ▼
          your wallet
 ```
@@ -27,6 +27,6 @@ How the Factory, Pool, Router and math library fit together.
 
 - Solidity **0.8.28** (checked arithmetic by default)
 - No owner, no pause, no proxy — the code you read is the code that runs
-- Licence: BUSL-1.1
+- Source notices: BUSL-1.1; owner-approved license terms are pending, so no unrestricted reuse grant is asserted
 
 > Reference implementation — **unaudited, not deployed.**

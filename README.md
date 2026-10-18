@@ -4,6 +4,28 @@ Neura's public liquidity-protocol reference source and documentation.
 
 **Unaudited. Not deployed. Not ready for real funds.** Swap and Pools are coming soon. This repository does not include the Neura website, private services, user records or credentials.
 
+[![Contract checks](https://github.com/askneura/neura-v1/actions/workflows/contracts.yml/badge.svg)](https://github.com/askneura/neura-v1/actions/workflows/contracts.yml)
+
+## Quickstart
+Install Foundry from its official distribution, then:
+```bash
+git clone https://github.com/askneura/neura-v1.git
+cd neura-v1
+forge build
+forge test -vv
+forge script contracts/script/DeployNeuraV1.s.sol:DeployNeuraV1
+```
+Tests and the default script simulation use no live funds or secrets. No broadcast was performed. CI results are visible through the badge; a configured workflow is not itself evidence of a successful run.
+
+## Repository map
+- `contracts/src`: Factory, Pool, Router, interfaces and integer math.
+- `contracts/test`: self-contained regressions and 256-case fuzz checks.
+- `contracts/script`: local deployment preparation.
+- `docs`: protocol concepts and developer/API references.
+- `.github`: contract checks and contribution templates.
+
+Core and routing code share one repository so interface changes and tests are reviewed together. No additional empty repositories or unaudited token/governance contracts are presented as completed products.
+
 ## Explore
 - [Documentation](docs/README.md) — protocol concepts, formulas, products and source explanations.
 - [Developer guide](DEVELOPMENT.md) — local contract compilation and review checklist.

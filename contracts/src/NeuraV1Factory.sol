@@ -17,6 +17,7 @@ contract NeuraV1Factory {
     mapping(bytes32 => address) internal pools;
     address[] public allPools;
     Parameters public parameters;
+    bool private creating;
 
     event PoolCreated(address indexed token0, address indexed token1, bool stable, uint24 baseFee, address pool, uint256 index);
 
@@ -46,9 +47,12 @@ contract NeuraV1Factory {
     }
 
     function createPool(address tokenA, address tokenB, bool stable, uint24 fee) external returns (address pool) {
+        require(!creating, "creating");
+        creating = true;
         require(tokenA != tokenB, "identical");
         (address t0, address t1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
         require(t0 != address(0), "zero");
+        require(t0.code.length > 0 && t1.code.length > 0, "token code");
         require(feeEnabled[fee], "fee tier");
         uint24 surge = surgeForFee[fee];
         bytes32 key = _key(t0, t1, stable, fee);
@@ -60,6 +64,7 @@ contract NeuraV1Factory {
 
         pools[key] = pool;
         allPools.push(pool);
+        creating = false;
         emit PoolCreated(t0, t1, stable, fee, pool, allPools.length - 1);
     }
 }

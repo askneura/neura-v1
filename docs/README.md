@@ -27,3 +27,12 @@ Reference documentation. Contracts are unaudited and not deployed. See [security
 - [Check OG](check-og.md) — Products
 - [FAQ](faq.md) — Resources
 - [Glossary](glossary.md) — Resources
+- [Developer quickstart](developer-quickstart.md) — Developers
+- [Integrating Neura V1](integration-guide.md) — Developers
+- [Contract API reference](contract-api.md) — Developers
+- [Events and indexing](events.md) — Developers
+- [Errors and troubleshooting](errors.md) — Developers
+- [Token compatibility](token-compatibility.md) — Developers
+- [Testing and validation](testing.md) — Developers
+- [Deployment preparation](deployment-guide.md) — Developers
+- [Public repositories and releases](public-repositories.md) — Developers

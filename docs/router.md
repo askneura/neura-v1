@@ -11,7 +11,6 @@ Adds/removes liquidity at the optimal ratio and executes multi-hop exact-input s
 pragma solidity 0.8.28;
 
 import {IERC20Minimal, INeuraV1Factory, INeuraV1Pool} from "./interfaces/INeuraV1.sol";
-import {NeuraMath} from "./libraries/NeuraMath.sol";
 
 /// @title Neura V1 Router
 /// @notice User-facing entry point: add/remove liquidity and multi-hop swaps
@@ -25,6 +24,8 @@ contract NeuraV1Router {
     error Expired();
     error Slippage();
     error NoPool();
+    error InvalidRoute();
+    error InvalidRecipient();
 
     modifier ensure(uint256 deadline) {
         if (block.timestamp > deadline) revert Expired();
@@ -32,6 +33,7 @@ contract NeuraV1Router {
     }
 
     constructor(address _factory) {
+        require(_factory.code.length > 0, "factory");
         factory = _factory;
     }
 
@@ -46,6 +48,7 @@ contract NeuraV1Router {
         uint256 amountADesired, uint256 amountBDesired, uint256 amountAMin, uint256 amountBMin,
         address to, uint256 deadline
     ) external ensure(deadline) returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
+        _validateRecipient(to);
         address pool = poolFor(Route(tokenA, tokenB, stable, fee));
         (uint256 rA, uint256 rB) = _reserves(pool, tokenA);
         if (rA == 0 && rB == 0) {
@@ -61,6 +64,7 @@ contract NeuraV1Router {
                 (amountA, amountB) = (aOptimal, amountBDesired);
             }
         }
+        if (amountA < amountAMin || amountB < amountBMin) revert Slippage();
         _pull(tokenA, pool, amountA);
         _pull(tokenB, pool, amountB);
         liquidity = INeuraV1Pool(pool).mint(to);
@@ -70,6 +74,7 @@ contract NeuraV1Router {
         address tokenA, address tokenB, bool stable, uint24 fee,
         uint256 liquidity, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline
     ) external ensure(deadline) returns (uint256 amountA, uint256 amountB) {
+        _validateRecipient(to);
         address pool = poolFor(Route(tokenA, tokenB, stable, fee));
         INeuraV1Pool(pool).transferFrom(msg.sender, pool, liquidity);
         (uint256 a0, uint256 a1) = INeuraV1Pool(pool).burn(to);
@@ -79,6 +84,7 @@ contract NeuraV1Router {
 
     // ------------------------------------------------------------ swaps
     function getAmountsOut(uint256 amountIn, Route[] calldata routes) public view returns (uint256[] memory amounts) {
+        _validateRoutes(routes);
         amounts = new uint256[](routes.length + 1);
         amounts[0] = amountIn;
         for (uint256 i = 0; i < routes.length; i++) {
@@ -91,6 +97,8 @@ contract NeuraV1Router {
     function swapExactTokensForTokens(
         uint256 amountIn, uint256 amountOutMin, Route[] calldata routes, address to, uint256 deadline
     ) external ensure(deadline) returns (uint256 received) {
+        _validateRecipient(to);
+        _validateRoutes(routes);
         address last = routes[routes.length - 1].to;
         uint256 before = IERC20Minimal(last).balanceOf(to);
         _pull(routes[0].from, poolFor(routes[0]), amountIn);
@@ -118,7 +126,20 @@ contract NeuraV1Router {
         require(ok && (ret.length == 0 || abi.decode(ret, (bool))), "transferFrom");
     }
 
-    // silence unused import warning in some compilers
-    function _min(uint256 a, uint256 b) internal pure returns (uint256) { return NeuraMath.min(a, b); }
+    function _validateRecipient(address to) private view {
+        if (to == address(0) || to == address(this)) revert InvalidRecipient();
+    }
+
+    function _validateRoutes(Route[] calldata routes) private view {
+        if (routes.length == 0) revert InvalidRoute();
+        for (uint256 i = 0; i < routes.length; i++) {
+            if (routes[i].from == routes[i].to || (i > 0 && routes[i - 1].to != routes[i].from)) revert InvalidRoute();
+            address pool = poolFor(routes[i]);
+            // A reused pool changes reserves/fees mid-route, invalidating static quotes.
+            for (uint256 j = 0; j < i; j++) {
+                if (pool == poolFor(routes[j])) revert InvalidRoute();
+            }
+        }
+    }
 }
 ```

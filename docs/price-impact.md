@@ -24,4 +24,4 @@ $$
 \text{amountOutMin} = \text{quote} \times (1 - s)
 $$
 
-Defaults: **0.5%** for most pairs, **0.1%** for stable pairs. Neura AI warns above 2%, because a loose tolerance is exactly what sandwich bots look for.
+The contract has no default tolerance. AI preview uses **0.5%** when none is supplied; this does not execute a trade. Neura AI warns above 2%, because a loose tolerance is exactly what sandwich bots look for.

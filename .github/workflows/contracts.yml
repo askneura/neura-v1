@@ -1,0 +1,25 @@
+name: Contract checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.7.1
+      - name: Compile
+        run: forge build
+      - name: Regression and fuzz checks
+        run: forge test -vv
+      - name: Local deployment simulation
+        run: forge script contracts/script/DeployNeuraV1.s.sol:DeployNeuraV1

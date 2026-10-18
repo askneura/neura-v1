@@ -1,6 +1,6 @@
 # Fees and the surge fee
 
-Fee tiers, the same-block surge fee that defends against sandwich attacks, and who earns what.
+Fixed fee tiers, the same-block surcharge, fee recipients and economic limits.
 
 > Reference documentation. V1 contracts are unaudited and not deployed. Read the [security limitations](../SECURITY.md); descriptions are not guarantees.
 
@@ -17,7 +17,7 @@ Fees are measured in **pips** (1 pip = 0.0001%). They are taken from the input t
 
 Total fee is hard-capped at **1%** in the contract. Fee tiers are fixed at deployment; **no one can change a pool's fee afterwards**.
 
-## Surge fee — Neura's anti-sandwich rule
+## Same-block surcharge — scope and limits
 
 A sandwich attack needs at least two swaps in the same block around yours. Neura charges:
 
@@ -30,7 +30,7 @@ $$
            base fee      base+surge      base+surge
 ```
 
-The bot's back-run pays the surge, which wipes out the profit on most small and medium trades. Normal users, who almost never trade twice in the same block, pay just the base fee. Arbitrageurs still keep prices aligned — they simply pay LPs more for it.
+The surcharge applies to **every later swap in that pool**, even when a different ordinary user submits it. The contract cannot identify a bot or guarantee an unprofitable sandwich. Quotes can become stale if an earlier swap is mined first; user-approved minima remain essential.
 
 ## Who earns fees
 

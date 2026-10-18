@@ -15,4 +15,4 @@ Neura works on whichever supported network your wallet is already on — no forc
 | Polygon PoS | 137 | POL |
 | BNB Chain | 56 | BNB |
 
-All networks are **mainnets**: transactions use real assets and cannot be undone. Neura V1 will deploy the same contracts at the same CREATE2 addresses on every chain where possible.
+All networks are **mainnets**: transactions use real assets and cannot be undone. No V1 contracts are deployed. Pool CREATE2 addresses depend on the factory address and initialization bytecode; cross-chain address equality is not guaranteed.
