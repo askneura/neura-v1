@@ -4,7 +4,7 @@ How the one-time Neura Originals allocation works.
 
 > Reference documentation. V1 contracts are unaudited and not deployed. Read the [security limitations](../SECURITY.md); descriptions are not guarantees.
 
-Check OG reviews a verified wallet's public on-chain history across all six networks and records a **Neura allocation between 10 and 1,000**.
+Check OG reviews a verified wallet's public on-chain history across all six networks and records a **Neura allocation**.
 
 ## What is considered
 
