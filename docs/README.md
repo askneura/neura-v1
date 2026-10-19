@@ -25,6 +25,7 @@ Reference documentation. Contracts are unaudited and not deployed. See [security
 - [Deployments](deployments.md) — Smart contracts
 - [Neura AI](neura-ai.md) — Products
 - [Check OG](check-og.md) — Products
+- [Tokenomics](tokenomics.md) — Resources
 - [FAQ](faq.md) — Resources
 - [Glossary](glossary.md) — Resources
 - [Developer quickstart](developer-quickstart.md) — Developers
